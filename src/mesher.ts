@@ -4,7 +4,7 @@
 import { WORLD_H, CHUNK, climateIdx } from "./config";
 import {
   B, BLOCKS, OPAQUE, SHAPE, LAYER, Shape, Layer, TEX_TOP, TEX_BOTTOM, TEX_SIDE, TEX_SIDE_ALT, TINT, Tint, IS_LEAVES, IN_WATER,
-  AO_OCC, isWaterLike,
+  AO_OCC, isWaterLike, OPACITY,
 } from "./blocks";
 import { RW, HP, REGION_SIZE, computeLight } from "./lighting";
 import { biomeColors } from "./biomes";
@@ -371,7 +371,20 @@ function boxModel(x: number, y: number, z: number, ri: number, id: number, wx: n
   const def = BLOCKS[id];
   const boxes = def.boxes!;
   const buf = def.layer === Layer.CUTOUT ? bufC : def.layer === Layer.TRANSLUCENT ? bufT : bufO;
-  const sk = Math.round(sky[ri] * 17), bk = Math.round(blk[ri] * 17);
+  let sk = Math.round(sky[ri] * 17), bk = Math.round(blk[ri] * 17);
+  // 光を遮る部分ブロック（ハーフブロック・階段）は、自分のセルの光が0なので周囲の光を使う
+  let nbS = 0, nbB = 0;
+  const lightFromNeighbors = OPACITY[id] > 0;
+  if (lightFromNeighbors) {
+    for (let f = 0; f < 6; f++) {
+      const n = ri + NORMAL_OFF[f];
+      if (OPAQUE[rb[n]]) continue;
+      if (sky[n] > nbS) nbS = sky[n];
+      if (blk[n] > nbB) nbB = blk[n];
+    }
+    sk = Math.round(nbS * 17);
+    bk = Math.round(nbB * 17);
+  }
   const lean = def.lean;
   const tint = def.tint;
   // 竹はブロックごとに位置を少しずらす
@@ -390,7 +403,7 @@ function boxModel(x: number, y: number, z: number, ri: number, id: number, wx: n
       const v0 = buf.nv;
       // 面の明るさ：上面は上のセルの光を拾う
       let fs = sk, fb = bk;
-      if (f === 2) { fs = Math.max(fs, Math.round(sky[ri + 1] * 17)); fb = Math.max(fb, Math.round(blk[ri + 1] * 17)); }
+      if (!lightFromNeighbors && f === 2) { fs = Math.max(fs, Math.round(sky[ri + 1] * 17)); fb = Math.max(fb, Math.round(blk[ri + 1] * 17)); }
       for (let c = 0; c < 4; c++) {
         const cor = corners[c];
         const px = cor[0] ? x1 : x0, py = cor[1] ? y1 : y0, pz = cor[2] ? z1 : z0;

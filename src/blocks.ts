@@ -59,6 +59,14 @@ export const texLayer = (name: string) => texIndex(name);
 // ---- ブロック名一覧（この順番がIDになる。既存IDは変更しないこと） -------------------
 const COLORS = ["white", "light_gray", "gray", "black", "brown", "red", "orange", "yellow", "lime", "green", "cyan", "light_blue", "blue", "purple", "magenta", "pink"] as const;
 
+const SLAB_BASES = [
+  ["stone_bricks", "石レンガ"], ["cobblestone", "丸石"], ["oak_planks", "オークの板材"], ["spruce_planks", "トウヒの板材"],
+  ["birch_planks", "シラカバの板材"], ["cherry_planks", "サクラの板材"], ["sandstone", "砂岩"], ["bricks", "レンガ"],
+] as const;
+const SLAB_VARIANTS = ["slab", "slab_top", "stairs_px", "stairs_nx", "stairs_pz", "stairs_nz"] as const;
+type SlabName = `${(typeof SLAB_BASES)[number][0]}_${(typeof SLAB_VARIANTS)[number]}`;
+const SLAB_NAMES = SLAB_BASES.flatMap(([b]) => SLAB_VARIANTS.map((v) => `${b}_${v}`)) as SlabName[];
+
 type ConcreteName = `concrete_${(typeof COLORS)[number]}`;
 const CONCRETE = COLORS.map((c) => `concrete_${c}`) as ConcreteName[];
 
@@ -77,6 +85,7 @@ const NAMES = [
   ...CONCRETE,
   "pink_petals", "mud", "red_sand", "calcite",
   "lacquer_red", "lacquer_black", "paper_lantern", "bamboo", "bamboo_leaves",
+  ...SLAB_NAMES,
 ] as const;
 
 type Names = (typeof NAMES)[number];
@@ -87,6 +96,7 @@ const byName = new Map<string, BlockDef>();
 
 interface Opts {
   tex?: string | [string, string, string];
+  texIdx?: [number, number, number];
   shape?: number;
   layer?: number;
   collide?: boolean;
@@ -112,6 +122,7 @@ function def(name: Names, label: string, o: Opts = {}) {
   const shape = o.shape ?? Shape.CUBE;
   const t = o.tex ?? name;
   const [top, bottom, side] = typeof t === "string" ? [t, t, t] : t;
+  const ti = o.texIdx;
   const opaqueCube = shape === Shape.CUBE && (o.layer ?? Layer.OPAQUE) === Layer.OPAQUE;
   const d: BlockDef = {
     id,
@@ -128,10 +139,10 @@ function def(name: Names, label: string, o: Opts = {}) {
     replaceable: o.replaceable ?? false,
     inWater: o.inWater ?? false,
     leaves: o.leaves ?? false,
-    top: texIndex(top),
-    bottom: texIndex(bottom),
-    side: texIndex(side),
-    sideAlt: o.sideAlt ? texIndex(o.sideAlt) : texIndex(side),
+    top: ti ? ti[0] : texIndex(top),
+    bottom: ti ? ti[1] : texIndex(bottom),
+    side: ti ? ti[2] : texIndex(side),
+    sideAlt: o.sideAlt ? texIndex(o.sideAlt) : ti ? ti[2] : texIndex(side),
     boxes: o.boxes ?? null,
     lean: o.lean ?? null,
     attach: o.attach ?? "none",
@@ -244,6 +255,42 @@ def("lacquer_black", "黒漆の木材", { sound: "wood", cat: "building" });
 def("paper_lantern", "提灯", { emit: 14, sound: "wood", cat: "lights" });
 def("bamboo", "竹", { shape: Shape.BOX, layer: Layer.OPAQUE, collide: false, opaque: false, opacity: 0, sound: "wood", boxes: [[6.5 / 16, 0, 6.5 / 16, 9.5 / 16, 1, 9.5 / 16]], attach: "below", cat: "plants" });
 def("bamboo_leaves", "笹の葉", { shape: Shape.CROSS, layer: Layer.CUTOUT, collide: false, opaque: false, opacity: 0, sound: "plant", tint: Tint.FOLIAGE, attach: "none", cat: "plants" });
+
+// --- ハーフブロックと階段
+export interface SlabGroup {
+  base: number;
+  slab: number;
+  slabTop: number;
+  /** [px, nx, pz, nz]：背の高い側がその向き */
+  stairs: [number, number, number, number];
+}
+export const SLAB_GROUPS: SlabGroup[] = [];
+export const SLAB_OF = new Map<number, SlabGroup>();
+for (const [b, jp] of SLAB_BASES) {
+  const base = byName.get(b)!;
+  const SB: Record<(typeof SLAB_VARIANTS)[number], BoxT[]> = {
+    slab: [[0, 0, 0, 1, 0.5, 1]],
+    slab_top: [[0, 0.5, 0, 1, 1, 1]],
+    stairs_px: [[0, 0, 0, 1, 0.5, 1], [0.5, 0.5, 0, 1, 1, 1]],
+    stairs_nx: [[0, 0, 0, 1, 0.5, 1], [0, 0.5, 0, 0.5, 1, 1]],
+    stairs_pz: [[0, 0, 0, 1, 0.5, 1], [0, 0.5, 0.5, 1, 1, 1]],
+    stairs_nz: [[0, 0, 0, 1, 0.5, 1], [0, 0.5, 0, 1, 1, 0.5]],
+  };
+  const ids: Record<string, number> = {};
+  for (const v of SLAB_VARIANTS) {
+    const nm = `${b}_${v}` as Names;
+    const stair = v.startsWith("stairs");
+    const rep = v === "slab" || v === "stairs_px";
+    def(nm, `${jp}の${stair ? "階段" : "ハーフブロック"}`, {
+      shape: Shape.BOX, layer: Layer.OPAQUE, collide: true, opaque: false, opacity: 15, sound: base.sound, boxes: SB[v], cat: "building",
+      hidden: !rep, itemOf: rep ? undefined : stair ? `${b}_stairs_px` : `${b}_slab`, texIdx: [base.top, base.bottom, base.side],
+    });
+    ids[v] = B[nm.toUpperCase() as Uppercase<Names>];
+  }
+  const g: SlabGroup = { base: base.id, slab: ids.slab, slabTop: ids.slab_top, stairs: [ids.stairs_px, ids.stairs_nx, ids.stairs_pz, ids.stairs_nz] };
+  SLAB_GROUPS.push(g);
+  for (const id of [g.slab, g.slabTop, ...g.stairs]) SLAB_OF.set(id, g);
+}
 
 // --- カラーブロック
 for (const c of COLORS) def(`concrete_${c}` as Names, "コンクリート", { cat: "colors", sound: "stone" });

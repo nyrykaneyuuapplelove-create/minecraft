@@ -45,6 +45,10 @@ export function makeIcon(def: BlockDef, tex: TextureSet, size = 64): HTMLCanvasE
     sprite(def.side, def.name === "torch" ? 1.0 : 0.9);
     return cv;
   }
+  if (def.shape === Shape.BOX && def.boxes && def.boxes.length > 0 && def.name !== "cactus") {
+    isoBoxes(ctx, size, def, tinted(tex, def.top, def.tint), tinted(tex, def.side, def.tint));
+    return cv;
+  }
   const L = size * 0.47;
   const cx = size / 2, cy = size / 2;
   const u = [0.866 * L, 0.5 * L], v = [-0.866 * L, 0.5 * L], h = L;
@@ -82,6 +86,34 @@ export function makeIcon(def: BlockDef, tex: TextureSet, size = 64): HTMLCanvasE
   ctx.closePath(); ctx.fill();
   ctx.restore();
   return cv;
+}
+
+/** 複数のボックスからなる形（ハーフブロック・階段）をアイソメで描く */
+function isoBoxes(ctx: CanvasRenderingContext2D, size: number, def: BlockDef, top: HTMLCanvasElement, side: HTMLCanvasElement) {
+  const L = size * 0.47;
+  const cx = size / 2, cy = size / 2;
+  const U = [0.866 * L, 0.5 * L], V = [-0.866 * L, 0.5 * L];
+  const T = [cx, cy - L];
+  const P = (x: number, y: number, z: number) => [T[0] + x * U[0] + z * V[0], T[1] + x * U[1] + z * V[1] + (1 - y) * L];
+  const draw = (img: HTMLCanvasElement, sx: number, sy: number, sw: number, sh: number, o: number[], u: number[], v: number[], shade: number) => {
+    ctx.save();
+    ctx.setTransform(u[0] - o[0], u[1] - o[1], v[0] - o[0], v[1] - o[1], o[0], o[1]);
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 1, 1);
+    if (shade > 0) {
+      ctx.fillStyle = `rgba(0,0,0,${shade})`;
+      ctx.fillRect(0, 0, 1, 1);
+    }
+    ctx.restore();
+  };
+  const boxes = [...def.boxes!].sort((a, b) => a[0] + a[2] + a[1] * 0.5 - (b[0] + b[2] + b[1] * 0.5));
+  for (const [x0, y0, z0, x1, y1, z1] of boxes) {
+    // 上面
+    draw(top, x0 * TEX, z0 * TEX, (x1 - x0) * TEX, (z1 - z0) * TEX, P(x0, y1, z0), P(x1, y1, z0), P(x0, y1, z1), 0);
+    // +Z 面（左）
+    draw(side, x0 * TEX, (1 - y1) * TEX, (x1 - x0) * TEX, (y1 - y0) * TEX, P(x0, y1, z1), P(x1, y1, z1), P(x0, y0, z1), 0.2);
+    // +X 面（右）
+    draw(side, (1 - z1) * TEX, (1 - y1) * TEX, (z1 - z0) * TEX, (y1 - y0) * TEX, P(x1, y1, z1), P(x1, y1, z0), P(x1, y0, z1), 0.38);
+  }
 }
 
 export function makeAllIcons(tex: TextureSet, size = 64): Map<number, string> {

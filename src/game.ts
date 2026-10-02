@@ -22,7 +22,7 @@ import { makeAllIcons } from "./icons";
 import { PlayerModel } from "./playerModel";
 import { Lod } from "./lod";
 import { ChunkStore, loadMeta, saveMeta, clearMeta, type SaveMeta } from "./persistence";
-import { B, BLOCKS, BLOCK_BY_NAME, COLLIDE, EMIT, IS_LIQUID, REPLACEABLE, OPAQUE, selectionBoxes, Shape, isWaterLike } from "./blocks";
+import { B, BLOCKS, BLOCK_BY_NAME, COLLIDE, EMIT, IS_LIQUID, REPLACEABLE, OPAQUE, selectionBoxes, Shape, isWaterLike, SLAB_OF } from "./blocks";
 import { Biome, BIOME_LABEL, biomeColors, isColdBiome } from "./biomes";
 import { hash2, seedFromString } from "./noise";
 
@@ -890,9 +890,28 @@ export class Game {
       else if (hit.nz === -1) placeId = B.TORCH_WALL_PZ;
       else placeId = B.TORCH_WALL_NZ;
     }
+    // ハーフブロック・階段
+    const grp = SLAB_OF.get(item);
+    if (grp) {
+      if (item === grp.slab || item === grp.slabTop) {
+        // 同じ素材のハーフブロックの上下に重ねると、ひとつのブロックになる
+        if ((hit.id === grp.slab && hit.ny === 1) || (hit.id === grp.slabTop && hit.ny === -1)) {
+          if (this.player.intersectsBlock(hit.x, hit.y, hit.z, grp.base)) return false;
+          if (!w.setBlock(hit.x, hit.y, hit.z, grp.base)) return false;
+          this.audio.play("place", BLOCKS[grp.base].sound);
+          return true;
+        }
+        const upper = hit.ny === -1 ? true : hit.ny === 1 ? false : hit.py - hit.y > 0.5;
+        placeId = upper ? grp.slabTop : grp.slab;
+      } else {
+        // 階段は、プレイヤーが向いている方向へ上っていく向きに置く
+        const fx = -Math.sin(this.player.yaw), fz = -Math.cos(this.player.yaw);
+        placeId = Math.abs(fx) > Math.abs(fz) ? (fx > 0 ? grp.stairs[0] : grp.stairs[1]) : fz > 0 ? grp.stairs[2] : grp.stairs[3];
+      }
+    }
     const def = BLOCKS[placeId];
     if (def.attach !== "none" && !this.supported(tx, ty, tz, placeId)) return false;
-    if (COLLIDE[placeId] && this.player.intersectsBlock(tx, ty, tz)) return false;
+    if (COLLIDE[placeId] && this.player.intersectsBlock(tx, ty, tz, placeId)) return false;
     // 2段植物の置き換えで残った上半分を掃除
     if (cur === B.TALL_GRASS_LO && w.getBlock(tx, ty + 1, tz) === B.TALL_GRASS_HI) w.setBlock(tx, ty + 1, tz, B.AIR);
     if (!w.setBlock(tx, ty, tz, placeId)) return false;
@@ -931,6 +950,7 @@ export class Game {
       biomeColors(biome, info[1], info[2], this.colScratch);
       env.waterTint.setRGB(this.colScratch[6], this.colScratch[7], this.colScratch[8]);
     }
+    env.mistBias = biome === Biome.SWAMP ? 0.55 : biome === Biome.BAMBOO_GROVE ? 0.25 : biome === Biome.CHERRY_GROVE ? 0.12 : 0;
     env.snowing = isColdBiome(biome) || (info ? info[1] < 70 : false);
     // オーロラ：寒い土地の夜に、日によって出る
     const coldTarget = isColdBiome(biome) || (info ? info[1] < 95 : false) ? 1 : 0;

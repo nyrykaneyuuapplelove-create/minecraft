@@ -115,8 +115,8 @@ export class AudioEngine {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
     this.master.gain.setTargetAtTime(this.vol.master, t, 0.05);
-    this.musicBus.gain.setTargetAtTime(this.vol.music * 0.9, t, 0.05);
-    this.ambBus.gain.setTargetAtTime(this.vol.amb, t, 0.05);
+    this.musicBus.gain.setTargetAtTime(this.vol.music * 1.7, t, 0.05);
+    this.ambBus.gain.setTargetAtTime(this.vol.amb * 1.35, t, 0.05);
     this.sfxBus.gain.setTargetAtTime(this.vol.sfx, t, 0.05);
   }
 

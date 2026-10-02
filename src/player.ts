@@ -339,9 +339,14 @@ export class Player {
   }
 
   /** ブロックを置いてもプレイヤーと重ならないか */
-  intersectsBlock(bx: number, by: number, bz: number): boolean {
+  intersectsBlock(bx: number, by: number, bz: number, id = -1): boolean {
     const b = this.aabb();
-    return b.x1 > bx && b.x0 < bx + 1 && b.y1 > by && b.y0 < by + 1 && b.z1 > bz && b.z0 < bz + 1;
+    const boxes = id > 0 ? collisionBoxes(id) : null;
+    if (!boxes) return b.x1 > bx && b.x0 < bx + 1 && b.y1 > by && b.y0 < by + 1 && b.z1 > bz && b.z0 < bz + 1;
+    for (const c of boxes) {
+      if (b.x1 > bx + c[0] && b.x0 < bx + c[3] && b.y1 > by + c[1] && b.y0 < by + c[4] && b.z1 > bz + c[2] && b.z0 < bz + c[5]) return true;
+    }
+    return false;
   }
 
   eyePos(alpha: number, out: { x: number; y: number; z: number }) {

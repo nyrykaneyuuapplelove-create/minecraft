@@ -15,6 +15,7 @@ uniform float uGlowAmount;
 uniform float uFogDensity;
 uniform float uFogEnd;
 uniform float uEdgeFog;
+uniform float uMist;
 uniform float uUnderwater;
 uniform vec3 uWaterFog;
 uniform vec3 uBlockColor;
@@ -57,6 +58,13 @@ vec3 skyColor(vec3 d) {
   float ad = max(dot(d, -uSunDir), 0.0);
   col += uGlowColor * vec3(0.55, 0.3, 0.5) * pow(ad, 6.0) * uGlowAmount * 0.18 * (1.0 - h);
   return col;
+}
+// 低地に溜まる霧（朝霧・雨上がり・湿地）。標高が高いほど薄くなる
+float mistAmount(vec3 wp, float dist) {
+  if (uMist <= 0.001) return 0.0;
+  float y = mix(cameraPosition.y, wp.y, 0.6);
+  float hf = exp(-max(y - 58.0, 0.0) * 0.055);
+  return 1.0 - exp(-dist * 0.0125 * uMist * hf);
 }
 vec3 fogColorFor(vec3 dir) {
   vec3 d = dir;

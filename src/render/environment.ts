@@ -84,6 +84,9 @@ export class Environment {
   underwater = false;
   waterTint = new THREE.Color(0.2, 0.42, 0.86);
   snowing = false;
+  /** バイオームなどによる霧の上乗せ */
+  mistBias = 0;
+  private mistBiasCur = 0;
   fogEnd = 160;
   /** 太陽の輝度（光の強さ）0..1 */
   sunIntensity = 1;
@@ -107,6 +110,7 @@ export class Environment {
       uFogDensity: f(0.0016),
       uFogEnd: f(160),
       uEdgeFog: f(0.4),
+      uMist: f(0),
       uUnderwater: f(0),
       uWaterFog: v3(0.05, 0.2, 0.3),
       uBlockColor: v3(1.5, 0.9, 0.45),
@@ -256,6 +260,13 @@ export class Environment {
     u.uFogEnd.value = fogEnd;
     const haze = 0.0009 + rain * 0.0035 + twi * 0.0006;
     u.uFogDensity.value = haze;
+
+    // ---- 朝霧 ----
+    const dd = this.tick > 12000 ? this.tick - 24000 : this.tick;
+    const dawn = Math.exp(-Math.pow((dd - 250) / 1800, 2)) * 0.95;
+    const dusk = Math.exp(-Math.pow((this.tick - 12300) / 1300, 2)) * 0.28;
+    this.mistBiasCur += (this.mistBias - this.mistBiasCur) * Math.min(1, dt * 0.4);
+    u.uMist.value = Math.min(1.2, dawn + dusk + rain * 0.4 + this.mistBiasCur);
 
     // ---- 水中 ----
     u.uUnderwater.value = this.underwater ? 1 : 0;

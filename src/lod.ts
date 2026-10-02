@@ -54,7 +54,10 @@ void main() {
   float edge = smoothstep(uFogEnd * 0.78, uFogEnd * 0.985, dist) * uEdgeFog;
   float far = smoothstep(uFogEnd, 2200.0, dist) * 0.8;
   float f = 1.0 - (1.0 - haze) * (1.0 - edge) * (1.0 - far);
+  float mistF = mistAmount(vWorld, dist);
+  f = 1.0 - (1.0 - f) * (1.0 - mistF);
   vec3 fogC = fogColorFor(V);
+  fogC += uGlowColor * pow(max(dot(V, uSunDir), 0.0), 6.0) * 0.22 * uGlowAmount * mistF;
   if (uUnderwater > 0.5) { f = 1.0 - exp(-dist * 0.055); fogC = uWaterFog; }
   col = mix(col, fogC, clamp(f, 0.0, 1.0));
   gl_FragColor = vec4(col, 1.0);

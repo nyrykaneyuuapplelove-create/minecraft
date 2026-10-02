@@ -93,11 +93,14 @@ float wave(vec2 p) {
          texture(uCloudTex, p * 0.16 + vec2(-t * 0.027, t * 0.02)).r * 0.4;
 }
 
-vec3 applyFog(vec3 col, vec3 V, float dist) {
+vec3 applyFog(vec3 col, vec3 V, float dist, vec3 wp) {
   float haze = 1.0 - exp(-dist * uFogDensity);
   float edge = smoothstep(uFogEnd * 0.78, uFogEnd * 0.985, dist) * uEdgeFog;
   float f = 1.0 - (1.0 - haze) * (1.0 - edge);
+  float mistF = mistAmount(wp, dist);
+  f = 1.0 - (1.0 - f) * (1.0 - mistF);
   vec3 fogC = fogColorFor(V);
+  fogC += uGlowColor * pow(max(dot(V, uSunDir), 0.0), 6.0) * 0.22 * uGlowAmount * mistF;
   if (uUnderwater > 0.5) {
     f = 1.0 - exp(-dist * 0.055);
     fogC = uWaterFog;
@@ -179,7 +182,7 @@ void main() {
     outCol = lit + skyColor(vec3(R.x, abs(R.y), R.z)) * fres * 0.5 * skyB;
     outA = tex.a;
   }
-  outCol = applyFog(outCol, V, dist);
+  outCol = applyFog(outCol, V, dist, vWorld);
   gl_FragColor = vec4(outCol, outA);
 #else
   vec4 tex = texture(uAlbedo, vec3(vUv, vInfo.x));
@@ -218,7 +221,7 @@ void main() {
     col = albedo * light;
     col += albedo * mask.g * 2.4;
   }
-  col = applyFog(col, V, dist);
+  col = applyFog(col, V, dist, vWorld);
   gl_FragColor = vec4(col, 1.0);
 #endif
 }
