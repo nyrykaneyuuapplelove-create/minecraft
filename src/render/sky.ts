@@ -20,6 +20,7 @@ ${GLSL_MATH}
 ${GLSL_SKY_FN}
 ${GLSL_CLOUD_FN}
 uniform float uAurora;
+uniform float uRainbow;
 uniform mat3 uSkyRotInv;
 varying vec3 vDir;
 
@@ -51,6 +52,39 @@ vec3 milkyWay(vec3 ds) {
   float dust = smoothstep(0.38, 0.62, nz) * 0.7 + 0.3;
   float lane = smoothstep(0.55, 0.7, nz2) * 0.6;
   return vec3(0.55, 0.62, 0.95) * core * dust * (1.0 - lane) * 0.12;
+}
+
+// 流れ星：およそ20秒に1度、夜空を一瞬横切る
+vec3 meteor(vec3 d) {
+  const float PERIOD = 19.0;
+  float ev = floor(uTime / PERIOD);
+  float tt = uTime - ev * PERIOD;
+  if (tt > 1.1 || hash12(vec2(ev, 3.7)) > 0.8) return vec3(0.0);
+  float a0 = hash12(vec2(ev, 1.1)) * 6.2832;
+  vec3 p0 = normalize(vec3(cos(a0), 0.5 + hash12(vec2(ev, 2.2)) * 0.5, sin(a0)));
+  vec3 v = normalize(cross(p0, vec3(hash12(vec2(ev, 4.4)) - 0.5, 1.0, hash12(vec2(ev, 5.5)) - 0.5)));
+  float t = tt / 1.1;
+  vec3 head = normalize(p0 + v * (0.15 + t * 0.55));
+  vec3 tail = normalize(p0 + v * (0.15 + max(t - 0.28, 0.0) * 0.55));
+  vec3 e = head - tail;
+  float el = max(length(e), 1e-4);
+  float s = clamp(dot(d - tail, e) / (el * el), 0.0, 1.0);
+  float dist = length(d - (tail + e * s));
+  float w = 0.0016;
+  float line = smoothstep(w, 0.0, dist) * (0.15 + 0.85 * s);
+  float fade = smoothstep(0.0, 0.1, t) * (1.0 - smoothstep(0.7, 1.0, t));
+  return vec3(0.85, 0.92, 1.0) * line * fade * 5.0;
+}
+
+// 虹：太陽の反対側、約42度の円弧
+vec3 rainbow(vec3 d) {
+  float ang = acos(clamp(dot(d, -uSunDir), -1.0, 1.0));
+  float x = (ang - 0.735) / 0.055;
+  if (abs(x) > 1.4) return vec3(0.0);
+  float h = clamp(0.5 - x * 0.5, 0.0, 1.0);
+  vec3 c = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+  float band = smoothstep(1.4, 0.2, abs(x));
+  return c * band * 1.0;
 }
 
 vec3 aurora(vec3 d) {
@@ -93,7 +127,9 @@ void main() {
     vec3 stars = starColor(ds) * s * 2.2 + milkyWay(ds) * 1.4;
     col += stars * uNight * horizonFade * (1.0 - uRain);
     if (uAurora > 0.01) col += aurora(d) * uAurora;
+    if (uRain < 0.3) col += meteor(d) * uNight * horizonFade;
   }
+  if (uRainbow > 0.01 && d.y > -0.02) col += rainbow(d) * uRainbow * smoothstep(-0.02, 0.1, d.y);
 
   // 太陽
   float sd = dot(d, uSunDir);

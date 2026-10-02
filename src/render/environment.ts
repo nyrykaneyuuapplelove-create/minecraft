@@ -86,6 +86,10 @@ export class Environment {
   snowing = false;
   /** バイオームなどによる霧の上乗せ */
   mistBias = 0;
+  /** 雨上がりの虹（0..1） */
+  rainbow = 0;
+  private rainbowTimer = 0;
+  private prevRain = 0;
   private mistBiasCur = 0;
   fogEnd = 160;
   /** 太陽の輝度（光の強さ）0..1 */
@@ -111,6 +115,7 @@ export class Environment {
       uFogEnd: f(160),
       uEdgeFog: f(0.4),
       uMist: f(0),
+      uRainbow: f(0),
       uUnderwater: f(0),
       uWaterFog: v3(0.05, 0.2, 0.3),
       uBlockColor: v3(1.5, 0.9, 0.45),
@@ -260,6 +265,14 @@ export class Environment {
     u.uFogEnd.value = fogEnd;
     const haze = 0.0009 + rain * 0.0035 + twi * 0.0006;
     u.uFogDensity.value = haze;
+
+    // ---- 虹：雨が上がり、太陽が低めのときに現れる ----
+    if (this.prevRain > 0.3 && rain < 0.22 && this.weather === "clear" && e > 0.06 && e < 0.62) this.rainbowTimer = 110;
+    this.prevRain = rain;
+    this.rainbowTimer = Math.max(0, this.rainbowTimer - dt);
+    const rbTarget = this.rainbowTimer > 0 && e > 0.04 && e < 0.7 ? Math.min(1, this.rainbowTimer / 25) * (1 - rain) : 0;
+    this.rainbow += (rbTarget - this.rainbow) * Math.min(1, dt * 0.6);
+    u.uRainbow.value = this.rainbow;
 
     // ---- 朝霧 ----
     const dd = this.tick > 12000 ? this.tick - 24000 : this.tick;
