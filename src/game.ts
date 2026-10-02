@@ -524,6 +524,9 @@ export class Game {
         e.preventDefault();
         this.openChat("/");
         break;
+      case "KeyQ":
+        if (!this.ui.anyOverlayOpen) this.pickBlock(this.hit);
+        break;
       case "F1":
         this.hudVisible = !this.hudVisible;
         this.ui.setHudVisible(this.hudVisible);
@@ -738,6 +741,7 @@ export class Game {
   private updatePlayer(dt: number, active: boolean) {
     const inp = this.input;
     const p = this.player;
+    if (!active) inp.endTick();
     const blocking = this.ui.isChatOpen || this.ui.anyOverlayOpen;
     const canLook = active && inp.locked && !blocking;
     const canMove = active && inp.locked && !this.ui.isChatOpen && !this.ui.anyOverlayOpen;
@@ -763,6 +767,7 @@ export class Game {
       let n = 0;
       while (this.tickAcc >= 0.05 && n < 5) {
         p.tick(inp, canMove);
+        inp.endTick();
         this.tickAcc -= 0.05;
         n++;
       }

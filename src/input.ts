@@ -3,6 +3,8 @@
 export class Input {
   down = new Set<string>();
   private edge = new Set<string>();
+  /** 物理の1刻みのあいだに押されたキー（短いタップの取りこぼし防止） */
+  taps = new Set<string>();
   buttons = [false, false, false];
   private btnEdge = [false, false, false];
   dx = 0;
@@ -24,6 +26,7 @@ export class Input {
       if (e.repeat) return;
       this.down.add(e.code);
       this.edge.add(e.code);
+      this.taps.add(e.code);
       this.onKey?.(e.code, e);
     });
     window.addEventListener("keyup", (e) => {
@@ -85,6 +88,10 @@ export class Input {
   /** このフレームで押されたか（読むと消費される） */
   pressed(code: string) {
     return this.edge.delete(code);
+  }
+  /** 物理を1刻み進めるたびに呼ぶ */
+  endTick() {
+    this.taps.clear();
   }
   clicked(btn: number) {
     const v = this.btnEdge[btn];

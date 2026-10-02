@@ -217,11 +217,11 @@ export class Player {
       if (inp.isDown("KeyS")) fwd -= 1;
       if (inp.isDown("KeyA")) str += 1;
       if (inp.isDown("KeyD")) str -= 1;
-      jump = inp.isDown("Space");
+      jump = inp.isDown("Space") || inp.taps.has("Space");
       wantSneak = inp.isDown("ShiftLeft") || inp.isDown("ShiftRight");
       ctrl = inp.isDown("ControlLeft") || inp.isDown("ControlRight");
       // Wのダブルタップでダッシュ
-      const wDown = inp.isDown("KeyW");
+      const wDown = inp.isDown("KeyW") || inp.taps.has("KeyW");
       if (wDown && !this.wasWDown) {
         if (now - this.lastWTap < 7 && !this.sneaking) this.sprinting = true;
         this.lastWTap = now;
