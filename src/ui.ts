@@ -46,6 +46,13 @@ const SLIDERS: (SliderDef | ToggleDef | string)[] = [
   { key: "sfxVol", label: "効果音", min: 0, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
 ];
 
+const PRESETS: Record<string, Partial<Settings>> = {
+  low: { renderDistance: 7, shadows: false, shadowQuality: 0, bloom: false, godRays: false, resolution: 0.75, particles: false, farTerrain: false },
+  medium: { renderDistance: 10, shadows: true, shadowQuality: 0, bloom: true, godRays: false, resolution: 0.9, particles: true, farTerrain: true },
+  high: { renderDistance: 12, shadows: true, shadowQuality: 1, bloom: true, godRays: true, resolution: 1, particles: true, farTerrain: true },
+  ultra: { renderDistance: 16, shadows: true, shadowQuality: 2, bloom: true, godRays: true, resolution: 1.15, particles: true, farTerrain: true },
+};
+
 const CONTROLS: [string, string][] = [
   ["W A S D", "移動"],
   ["マウス", "視点の移動"],
@@ -377,6 +384,21 @@ export class UI {
     const panel = el("div", "panel");
     panel.style.width = "min(560px, 94vw)";
     panel.innerHTML = `<h2>設定</h2>`;
+    const pr = el("div", "row");
+    pr.append(el("label", undefined, "画質プリセット"));
+    const psel = el("select") as HTMLSelectElement;
+    psel.innerHTML = `<option value="">カスタム</option><option value="low">低（軽量）</option><option value="medium">標準</option><option value="high">高</option><option value="ultra">最高</option>`;
+    psel.addEventListener("change", () => {
+      const pre = PRESETS[psel.value];
+      if (!pre) return;
+      Object.assign(settings, pre);
+      saveSettings(settings);
+      this.onSettings?.("renderDistance");
+      this.settingsEl.innerHTML = "";
+      this.buildSettings();
+    });
+    pr.append(psel);
+    panel.append(pr);
     for (const d of SLIDERS) {
       if (typeof d === "string") {
         panel.append(el("div", "sub", d));

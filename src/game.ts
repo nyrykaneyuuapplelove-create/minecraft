@@ -109,6 +109,7 @@ export class Game {
   private colScratch = new Float32Array(9);
   private cinematic = false;
   private paused = false;
+  private freshStart = false;
   private model = new PlayerModel();
   lod!: Lod;
   private fpsAcc = 0;
@@ -337,26 +338,107 @@ export class Game {
       this.player.flying = m.flying;
     } else {
       this.player.setPos(this.spawn.x + 0.5, this.spawn.y, this.spawn.z + 0.5);
-      this.player.yaw = Math.PI * 0.8;
-      this.player.pitch = 0;
+      this.player.yaw = -Math.PI / 2 + 0.45; // 日の出の方角（東）を向いて始める
+      this.player.pitch = 0.04;
+      this.freshStart = true;
     }
     this.player.creative = true;
-    if (!m) this.clearSpawnArea();
+  }
+
+  /** 開始地点の近くで、平らで開けた地面を探し、見晴らしのよい向きを決める */
+  private findSafeSpawn(): { x: number; y: number; z: number; yaw: number } {
+    const w = this.world;
+    const ok = (x: number, z: number): number | null => {
+      const top = w.columnTop(x, z);
+      if (top <= 0) return null;
+      const id = w.getBlock(x, top - 1, z);
+      if (id <= 0 || OPAQUE[id] !== 1) return null;
+      const def = BLOCKS[id];
+      if (def.leaves || def.name.endsWith("_log") || IS_LIQUID[id]) return null;
+      if (top - 1 < SEA_LEVEL) return null;
+      for (let dy = 0; dy < 3; dy++) {
+        const a = w.getBlock(x, top + dy, z);
+        if (a !== 0 && !(a > 0 && !COLLIDE[a])) return null;
+      }
+      return top;
+    };
+    // 平らさ：周囲 ±3 の地面の高さの差が小さいほどよい
+    const flat = (x: number, z: number, y: number) => {
+      let worst = 0;
+      for (let dx = -3; dx <= 3; dx += 3)
+        for (let dz = -3; dz <= 3; dz += 3) {
+          const t = w.columnTop(x + dx, z + dz);
+          if (t <= 0) return 99;
+          worst = Math.max(worst, Math.abs(t - y));
+        }
+      return worst;
+    };
+    const cx = Math.floor(this.spawn.x), cz = Math.floor(this.spawn.z);
+    let best: { x: number; y: number; z: number; score: number } | null = null;
+    for (let r = 0; r <= 18; r++)
+      for (let dx = -r; dx <= r; dx++)
+        for (let dz = -r; dz <= r; dz++) {
+          if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+          const y = ok(cx + dx, cz + dz);
+          if (y === null) continue;
+          const score = flat(cx + dx, cz + dz, y) * 3 + r * 0.15;
+          if (!best || score < best.score) best = { x: cx + dx, y, z: cz + dz, score };
+        }
+    const sp = best ?? { x: cx, y: this.spawn.y, z: cz, score: 0 };
+    // 8方位のうち、遠くまで開けていて、日の出（東）に近い向きを選ぶ
+    let bestYaw = -Math.PI / 2, bestScore = -1e9;
+    for (let k = 0; k < 8; k++) {
+      const yaw = (k * Math.PI) / 4;
+      const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+      let s = fx * 2.5;
+      for (let d = 5; d <= 20; d += 3) s -= Math.max(0, w.columnTop(Math.floor(sp.x + fx * d), Math.floor(sp.z + fz * d)) - (sp.y + 1.5)) * 0.8;
+      if (s > bestScore) {
+        bestScore = s;
+        bestYaw = yaw;
+      }
+    }
+    return { x: sp.x, y: sp.y, z: sp.z, yaw: bestYaw };
+  }
+
+  /** 体が埋まっていたら、空いている高さまで押し上げる */
+  private unstick() {
+    const p = this.player;
+    for (let i = 0; i < 160; i++) {
+      const box = p.aabb();
+      let hit = false;
+      for (let x = Math.floor(box.x0); x <= Math.floor(box.x1) && !hit; x++)
+        for (let z = Math.floor(box.z0); z <= Math.floor(box.z1) && !hit; z++)
+          for (let y = Math.floor(box.y0); y <= Math.floor(box.y1) && !hit; y++) {
+            const id = this.world.getBlock(x, y, z);
+            if (id > 0 && COLLIDE[id]) hit = true;
+          }
+      if (!hit) return;
+      p.setPos(p.x, p.y + 1, p.z);
+    }
   }
 
   /** 新しいワールドの開始地点まわりの草を刈って、足元を見やすくする */
   private clearSpawnArea() {
     const w = this.world;
-    const cx = Math.floor(this.spawn.x + 0.5), cz = Math.floor(this.spawn.z + 0.5);
+    const cx = Math.floor(this.player.x), cz = Math.floor(this.player.z), cy = Math.floor(this.player.y);
     for (let dx = -2; dx <= 2; dx++)
       for (let dz = -2; dz <= 2; dz++)
         for (let dy = 0; dy <= 2; dy++) {
-          const id = w.getBlock(cx + dx, this.spawn.y + dy, cz + dz);
-          if (id > 0 && BLOCKS[id].shape === Shape.CROSS) w.setBlock(cx + dx, this.spawn.y + dy, cz + dz, B.AIR);
+          const id = w.getBlock(cx + dx, cy + dy, cz + dz);
+          if (id > 0 && BLOCKS[id].shape === Shape.CROSS) w.setBlock(cx + dx, cy + dy, cz + dz, B.AIR);
         }
   }
 
   private enterPlay() {
+    if (this.freshStart) {
+      // 読み込みが終わってから、安全な地面を探して開始地点を確定する
+      this.freshStart = false;
+      const sp = this.findSafeSpawn();
+      this.player.setPos(sp.x + 0.5, sp.y, sp.z + 0.5);
+      this.player.yaw = sp.yaw;
+      this.player.pitch = 0.05;
+      this.clearSpawnArea();
+    }
     this.state = "playing";
     this.loadDone = false;
     this.ui.showLoading(false);
@@ -641,6 +723,7 @@ export class Game {
       settings.resolution = Math.min(settings.resolution, 0.75);
       settings.renderDistance = Math.min(settings.renderDistance, 8);
       settings.godRays = false;
+      this.post.setMsaa(0);
       this.applyAllSettings();
       this.ui.toast("動作が重いため、画質を自動で下げました（設定から変更できます）");
     } else if (avg < 42) {
@@ -1171,6 +1254,7 @@ export class Game {
         if ([x, y, z].some(isNaN)) return this.say("座標が正しくありません");
         p.setPos(x, y, z);
         p.flying = true;
+        setTimeout(() => this.unstick(), 600);
         this.say(`(${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}) にテレポートしました（飛行モード）`);
         break;
       }

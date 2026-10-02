@@ -57,6 +57,7 @@
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # dist/ に出力
+npm run typecheck # 型チェック
 npm run preview
 ```
 
