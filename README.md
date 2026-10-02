@@ -7,6 +7,15 @@
 - 画像・音声の素材は**一切使っていません**。テクスチャも効果音もBGMも、すべてコードで生成しています
 - Three.js + TypeScript + Vite。Vercel にそのままデプロイできます
 
+<p align="center"><img src="docs/title.jpg" alt="HAKONIWA タイトル画面" width="880" /></p>
+
+| | |
+|---|---|
+| ![桜の丘](docs/cherry.jpg) | ![朝霧](docs/dawn-mist.jpg) |
+| ![竹林](docs/bamboo.jpg) | ![鳥居](docs/torii.jpg) |
+| ![雪山からの眺め](docs/vista.jpg) | ![雨](docs/rain.jpg) |
+| ![夜](docs/night.jpg) | ![オーロラ](docs/aurora.jpg) |
+
 ## 世界
 
 | | |
