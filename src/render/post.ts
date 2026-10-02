@@ -199,7 +199,9 @@ export class PostFX {
     });
   }
 
+  private maxMsaa = 8;
   setMsaa(n: number) {
+    n = Math.min(n, this.maxMsaa);
     if (n === this.msaa) return;
     this.msaa = n;
     const { width, height } = this.sceneRT;
@@ -241,6 +243,7 @@ export class PostFX {
     };
     if (ok()) return;
     console.warn("[hakoniwa] framebuffer incomplete: MSAA を無効にします");
+    this.maxMsaa = 0;
     this.setMsaa(0);
     if (ok()) return;
     console.warn("[hakoniwa] framebuffer incomplete: 8bit に切り替えます");

@@ -111,6 +111,7 @@ export class Game {
   private paused = false;
   private freshStart = false;
   private model = new PlayerModel();
+  private maxSamples = 4;
   lod!: Lod;
   private fpsAcc = 0;
   private fpsN = 0;
@@ -125,6 +126,7 @@ export class Game {
     this.renderer = renderer;
     const gl = renderer.getContext() as WebGL2RenderingContext;
     const maxSamples = gl.getParameter(gl.MAX_SAMPLES) as number;
+    this.maxSamples = maxSamples;
     const dbg = gl.getExtension("WEBGL_debug_renderer_info");
     this.gpuName = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : "WebGL2";
 
@@ -155,7 +157,7 @@ export class Game {
     this.scene.add(this.outline);
 
     this.input = new Input(canvas);
-    this.post = new PostFX(renderer, 2, 2, Math.min(4, maxSamples));
+    this.post = new PostFX(renderer, 2, 2, Math.min(settings.msaa, maxSamples));
     this.shadow = new Shadow(this.mats.shadowUniforms, new THREE.Group());
 
     this.bindUI();
@@ -299,6 +301,7 @@ export class Game {
     const s = settings;
     if (this.world) this.world.renderDistance = s.renderDistance;
     this.post.bloomEnabled = s.bloom;
+    this.post.setMsaa(Math.min(s.msaa, this.maxSamples));
     this.particles.enabled = s.particles;
     const q = [{ size: 1024, r: 48 }, { size: 2048, r: 60 }, { size: 3072, r: 72 }][s.shadowQuality] ?? { size: 2048, r: 60 };
     this.shadow.enabled = s.shadows;
@@ -726,11 +729,12 @@ export class Game {
       settings.resolution = Math.min(settings.resolution, 0.75);
       settings.renderDistance = Math.min(settings.renderDistance, 8);
       settings.godRays = false;
-      this.post.setMsaa(0);
+      settings.msaa = 0;
       this.applyAllSettings();
       this.ui.toast("動作が重いため、画質を自動で下げました（設定から変更できます）");
     } else if (avg < 42) {
       settings.shadowQuality = Math.min(settings.shadowQuality, 0);
+      settings.msaa = Math.min(settings.msaa, 2);
       settings.renderDistance = Math.min(settings.renderDistance, 9);
       this.applyAllSettings();
       this.ui.toast("画質を少し調整しました（設定から変更できます）");

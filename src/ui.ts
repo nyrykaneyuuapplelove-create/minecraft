@@ -47,10 +47,10 @@ const SLIDERS: (SliderDef | ToggleDef | string)[] = [
 ];
 
 const PRESETS: Record<string, Partial<Settings>> = {
-  low: { renderDistance: 7, shadows: false, shadowQuality: 0, bloom: false, godRays: false, resolution: 0.75, particles: false, farTerrain: false },
-  medium: { renderDistance: 10, shadows: true, shadowQuality: 0, bloom: true, godRays: false, resolution: 0.9, particles: true, farTerrain: true },
-  high: { renderDistance: 12, shadows: true, shadowQuality: 1, bloom: true, godRays: true, resolution: 1, particles: true, farTerrain: true },
-  ultra: { renderDistance: 16, shadows: true, shadowQuality: 2, bloom: true, godRays: true, resolution: 1.15, particles: true, farTerrain: true },
+  low: { renderDistance: 7, shadows: false, shadowQuality: 0, bloom: false, godRays: false, resolution: 0.75, msaa: 0, particles: false, farTerrain: false },
+  medium: { renderDistance: 10, shadows: true, shadowQuality: 0, bloom: true, godRays: false, resolution: 0.9, msaa: 2, particles: true, farTerrain: true },
+  high: { renderDistance: 12, shadows: true, shadowQuality: 1, bloom: true, godRays: true, resolution: 1, msaa: 4, particles: true, farTerrain: true },
+  ultra: { renderDistance: 16, shadows: true, shadowQuality: 2, bloom: true, godRays: true, resolution: 1.15, msaa: 4, particles: true, farTerrain: true },
 };
 
 const CONTROLS: [string, string][] = [
@@ -454,6 +454,18 @@ export class UI {
     });
     sq.append(sel);
     panel.append(sq);
+    const aa = el("div", "row");
+    aa.append(el("label", undefined, "アンチエイリアス（ギザギザの軽減）"));
+    const asel = el("select") as HTMLSelectElement;
+    asel.innerHTML = `<option value="0">オフ（軽い）</option><option value="2">2x</option><option value="4">4x（きれい）</option>`;
+    asel.value = String(settings.msaa);
+    asel.addEventListener("change", () => {
+      settings.msaa = Number(asel.value);
+      saveSettings(settings);
+      this.onSettings?.("msaa");
+    });
+    aa.append(asel);
+    panel.append(aa);
     const btns = el("div", "btns");
     const close = el("button", "btn small primary", "閉じる");
     close.addEventListener("click", () => this.settingsEl.classList.add("hidden"));

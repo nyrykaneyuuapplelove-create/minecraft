@@ -8,6 +8,7 @@ export interface Settings {
   bloom: boolean;
   godRays: boolean;
   resolution: number; // 描画解像度の倍率
+  msaa: number; // 0 / 2 / 4
   particles: boolean;
   farTerrain: boolean;
   bobbing: boolean;
@@ -29,6 +30,7 @@ const DEFAULTS: Settings = {
   bloom: true,
   godRays: true,
   resolution: 1,
+  msaa: 4,
   particles: true,
   farTerrain: true,
   bobbing: true,
