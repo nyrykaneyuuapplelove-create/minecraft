@@ -106,6 +106,7 @@ export class Environment {
       uGlowAmount: f(0.3),
       uFogDensity: f(0.0016),
       uFogEnd: f(160),
+      uEdgeFog: f(0.4),
       uUnderwater: f(0),
       uWaterFog: v3(0.05, 0.2, 0.3),
       uBlockColor: v3(1.5, 0.9, 0.45),
@@ -253,7 +254,7 @@ export class Environment {
     // ---- 霧・距離 ----
     this.fogEnd = fogEnd;
     u.uFogEnd.value = fogEnd;
-    const haze = 0.0011 + rain * 0.0035 + twi * 0.0006;
+    const haze = 0.0009 + rain * 0.0035 + twi * 0.0006;
     u.uFogDensity.value = haze;
 
     // ---- 水中 ----
@@ -261,9 +262,9 @@ export class Environment {
     const wcol = this.waterTint;
     const light = 0.12 + 0.88 * this.skyBrightness;
     (u.uWaterFog.value as THREE.Vector3).set(
-      Math.pow(wcol.r, 2.2) * 0.45 * light + 0.002,
-      Math.pow(wcol.g, 2.2) * 0.75 * light + 0.006,
-      Math.pow(wcol.b, 2.2) * 0.95 * light + 0.012,
+      Math.pow(wcol.r, 2.2) * 0.55 * light + 0.003,
+      Math.pow(wcol.g, 2.2) * 1.15 * light + 0.01,
+      Math.pow(wcol.b, 2.2) * 0.9 * light + 0.012,
     );
 
     // ---- 雲・風 ----

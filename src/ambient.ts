@@ -259,6 +259,7 @@ export interface AmbientCtx {
   ambient: THREE.Vector3;
   lightColor: THREE.Vector3;
   underwater: boolean;
+  outdoor: number;
   particles: boolean;
   scale: number;
 }
@@ -330,9 +331,10 @@ export class Ambient {
   }
   private petalLight!: THREE.IUniform;
 
+  private fast = false;
   private setAmount(name: string, v: number, dt: number) {
     const l = this.layers[name];
-    l.amount += (v - l.amount) * Math.min(1, dt * 0.8);
+    l.amount += (v - l.amount) * Math.min(1, dt * (this.fast && v < l.amount ? 6 : 0.8));
     if (Math.abs(v - l.amount) < 0.002) l.amount = v;
     l.mat.uniforms.uAmount.value = l.amount;
     l.obj.visible = l.amount > 0.003;
@@ -355,7 +357,9 @@ export class Ambient {
     this.petalLight.value.copy(lit).addScaledVector(c.lightColor, 0.25).clampScalar(0.03, 3);
 
     const b = c.biome;
-    const calm = 1 - c.rain * 0.6;
+    this.fast = c.underwater || c.outdoor < 0.5;
+    const out = Math.min(1, Math.max(0, (c.outdoor - 0.3) / 0.5));
+    const calm = (1 - c.rain * 0.6) * out;
     const part = c.particles ? 1 : 0;
     const quiet = c.underwater ? 0 : 1;
     this.setAmount("rain", rainOn * part, dt);
@@ -365,7 +369,7 @@ export class Ambient {
     this.setAmount("maple", (b === Biome.AUTUMN_FOREST ? 0.7 : 0) * calm * part * quiet, dt);
     this.setAmount("leaf", (b === Biome.BAMBOO_GROVE ? 0.6 : b === Biome.FOREST || b === Biome.BIRCH_FOREST || b === Biome.TAIGA ? 0.35 : 0) * calm * part * quiet, dt);
     const grassy = b === Biome.BAMBOO_GROVE || b === Biome.FOREST || b === Biome.BIRCH_FOREST || b === Biome.PLAINS || b === Biome.MEADOW || b === Biome.SWAMP || b === Biome.CHERRY_GROVE || b === Biome.AUTUMN_FOREST || b === Biome.SAVANNA;
-    this.setAmount("firefly", (grassy ? (b === Biome.SWAMP ? 1 : 0.7) : 0) * c.night * (1 - c.rain) * part * quiet, dt);
-    this.setAmount("mote", (grassy ? 0.5 : 0.15) * c.day * c.sunVis * (1 - c.rain) * part * quiet * (b === Biome.FOREST || b === Biome.BIRCH_FOREST || b === Biome.CHERRY_GROVE ? 1.4 : 1), dt);
+    this.setAmount("firefly", (grassy ? (b === Biome.SWAMP ? 1 : 0.7) : 0) * c.night * (1 - c.rain) * part * quiet * out, dt);
+    this.setAmount("mote", (grassy ? 0.5 : 0.15) * c.day * c.sunVis * (1 - c.rain) * part * quiet * (b === Biome.FOREST || b === Biome.BIRCH_FOREST || b === Biome.CHERRY_GROVE ? 1.4 : 1) * out, dt);
   }
 }

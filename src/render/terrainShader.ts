@@ -95,7 +95,7 @@ float wave(vec2 p) {
 
 vec3 applyFog(vec3 col, vec3 V, float dist) {
   float haze = 1.0 - exp(-dist * uFogDensity);
-  float edge = smoothstep(uFogEnd * 0.72, uFogEnd * 0.97, dist);
+  float edge = smoothstep(uFogEnd * 0.78, uFogEnd * 0.985, dist) * uEdgeFog;
   float f = 1.0 - (1.0 - haze) * (1.0 - edge);
   vec3 fogC = fogColorFor(V);
   if (uUnderwater > 0.5) {

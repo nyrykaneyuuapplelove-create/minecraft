@@ -14,6 +14,7 @@ uniform vec3 uGlowColor;
 uniform float uGlowAmount;
 uniform float uFogDensity;
 uniform float uFogEnd;
+uniform float uEdgeFog;
 uniform float uUnderwater;
 uniform vec3 uWaterFog;
 uniform vec3 uBlockColor;

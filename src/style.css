@@ -76,7 +76,7 @@ button, input, select { font-family: var(--font); }
 .panel h2 { margin: 0 0 16px; font-size: 22px; letter-spacing: 0.3em; font-weight: normal; }
 .panel .row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 7px 0; font-size: 15px; border-bottom: 1px solid rgba(255,255,255,0.06); }
 .panel .row label { flex: 1; color: #dbe6f7; }
-.panel .row .val { width: 54px; text-align: right; color: var(--accent2); font-size: 14px; }
+.panel .row .val { width: 88px; text-align: right; color: var(--accent2); font-size: 14px; }
 .panel input[type="range"] { width: 200px; accent-color: var(--accent); }
 .panel select, .panel input[type="text"], .panel input[type="number"] { background: rgba(0,0,0,0.4); color: #fff; border: 1px solid rgba(255,255,255,0.25); padding: 6px 8px; font-size: 15px; }
 .panel .btns { margin-top: 18px; display: flex; gap: 10px; justify-content: flex-end; }

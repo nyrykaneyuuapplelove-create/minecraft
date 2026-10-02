@@ -15,5 +15,9 @@
     "@types/three": "^0.186.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.2"
+  },
+  "description": "HAKONIWA — ブラウザで遊べる、世界観にすべてをかけたボクセルワールド",
+  "engines": {
+    "node": ">=18.18"
   }
 }

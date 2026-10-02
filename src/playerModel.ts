@@ -68,7 +68,7 @@ export class PlayerModel {
     const x = p.px + (p.x - p.px) * alpha, y = p.py + (p.y - p.py) * alpha, z = p.pz + (p.z - p.pz) * alpha;
     this.group.position.set(x, y, z);
     // 向き：体は進行方向寄り、頭は視線
-    this.group.rotation.y = p.yaw + Math.PI;
+    this.group.rotation.y = p.yaw;
     this.head.rotation.x = -pitch * 0.9;
     const speed = Math.hypot(p.x - p.px, p.z - p.pz) * 20;
     const target = p.onGround || p.inWater ? Math.min(1, speed / 4) : 0.1;

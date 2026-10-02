@@ -20,6 +20,7 @@ import { Ambient } from "./ambient";
 import { AudioEngine } from "./audio";
 import { makeAllIcons } from "./icons";
 import { PlayerModel } from "./playerModel";
+import { Lod } from "./lod";
 import { ChunkStore, loadMeta, saveMeta, clearMeta, type SaveMeta } from "./persistence";
 import { B, BLOCKS, BLOCK_BY_NAME, COLLIDE, EMIT, IS_LIQUID, REPLACEABLE, OPAQUE, selectionBoxes, Shape, isWaterLike } from "./blocks";
 import { Biome, BIOME_LABEL, biomeColors, isColdBiome } from "./biomes";
@@ -109,6 +110,7 @@ export class Game {
   private cinematic = false;
   private paused = false;
   private model = new PlayerModel();
+  lod!: Lod;
   private fpsAcc = 0;
   private fpsN = 0;
   private autoQ = { done: false, t: 0 };
@@ -180,6 +182,8 @@ export class Game {
     this.world.renderDistance = settings.renderDistance;
     this.world.onEdit = (c) => this.store.mark(c);
     this.scene.add(this.world.group);
+    this.lod = new Lod(seed, this.env.uniforms);
+    this.scene.add(this.lod.group);
     // シャドウ用グループを差し替え
     this.shadow.scene.clear();
     this.shadow.scene.add(this.world.shadowGroup);
@@ -337,6 +341,19 @@ export class Game {
       this.player.pitch = 0;
     }
     this.player.creative = true;
+    if (!m) this.clearSpawnArea();
+  }
+
+  /** 新しいワールドの開始地点まわりの草を刈って、足元を見やすくする */
+  private clearSpawnArea() {
+    const w = this.world;
+    const cx = Math.floor(this.spawn.x + 0.5), cz = Math.floor(this.spawn.z + 0.5);
+    for (let dx = -2; dx <= 2; dx++)
+      for (let dz = -2; dz <= 2; dz++)
+        for (let dy = 0; dy <= 2; dy++) {
+          const id = w.getBlock(cx + dx, this.spawn.y + dy, cz + dz);
+          if (id > 0 && BLOCKS[id].shape === Shape.CROSS) w.setBlock(cx + dx, this.spawn.y + dy, cz + dz, B.AIR);
+        }
   }
 
   private enterPlay() {
@@ -351,6 +368,7 @@ export class Game {
     this.ui.updateHotbar(this.hotbar, this.selected);
     this.ui.showItemName(BLOCKS[this.hotbar[this.selected]]?.label ?? "");
     this.biomeNow = -1;
+    this.ui.log("ようこそ、箱庭へ。 Space を2回押すと空を飛べます。 E でブロック一覧、/help でコマンド一覧。");
     window.onbeforeunload = (e) => {
       e.preventDefault();
       return "";
@@ -549,6 +567,9 @@ export class Game {
     const biome = biomeInfo ? biomeInfo[0] : Biome.PLAINS;
     this.updateEnvironment(dt, camX, camY, camZ, biomeInfo);
     this.world.update(streamX, streamZ);
+    this.lod.enabled = settings.farTerrain;
+    this.env.uniforms.uEdgeFog.value = settings.farTerrain && this.lod.mesh ? 0.4 : 1;
+    this.lod.update(streamX, streamZ, this.world.renderDistance);
     this.sky.update(cam);
 
     // パーティクル・環境演出
@@ -561,7 +582,7 @@ export class Game {
       this.ambient.update(dt, {
         cam: cam.position, time: this.time, rain: env.rain, snowing: env.snowing, wind: env.uniforms.uWind.value as THREE.Vector2,
         biome, night: env.night, day: env.dayFactor, sunVis: env.sunIntensity, ambient: env.uniforms.uAmbient.value as THREE.Vector3, lightColor: L,
-        underwater: env.underwater, particles: settings.particles,
+        underwater: env.underwater, outdoor: this.lightSky, particles: settings.particles,
         scale: this.renderer.domElement.height / (2 * Math.tan((cam.fov * Math.PI) / 360)) * 0.5,
       }, this.world);
     } catch (e) {
@@ -687,7 +708,7 @@ export class Game {
 
     // 三人称
     if (this.thirdPerson > 0) {
-      const sgn = this.thirdPerson === 1 ? -1 : 1;
+      const sgn = this.thirdPerson === 1 ? 1 : -1;
       const dir = new THREE.Vector3(-Math.sin(p.yaw) * Math.cos(p.pitch), Math.sin(p.pitch), -Math.cos(p.yaw) * Math.cos(p.pitch));
       const back = dir.clone().multiplyScalar(sgn * -1);
       const h = raycast(this.world, eye.x, eye.y, eye.z, back.x, back.y, back.z, 4.2);

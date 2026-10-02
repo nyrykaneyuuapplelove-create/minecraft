@@ -492,7 +492,7 @@ export class WorldGen {
             break;
           case Biome.SWAMP:
             topB = h < SEA_LEVEL + 1 ? B.MUD : B.GRASS_BLOCK; fillB = B.DIRT;
-            if (h < SEA_LEVEL) { topB = fillB = sn > 0 ? B.MUD : B.CLAY; }
+            if (h < SEA_LEVEL) { topB = fillB = B.MUD; }
             break;
           case Biome.MOUNTAINS: case Biome.SNOWY_PEAKS: {
             const snowLine = 112 + sn * 6;

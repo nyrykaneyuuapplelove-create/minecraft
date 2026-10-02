@@ -723,7 +723,7 @@ GENS.lily_pad = (t, r) => {
       if (d > 7.4) continue;
       if (dx > 0 && Math.abs(dy) < dx * 0.22) continue; // 切れ込み
       const v = (r() - 0.5) * 24;
-      t.px(x, y, d < 6 ? [44 + v * 0.5, 126 + v, 50 + v * 0.4] : [30 + v * 0.4, 96 + v, 40]);
+      t.px(x, y, d < 6 ? [40 + v * 0.4, 96 + v * 0.8, 44 + v * 0.3] : [28 + v * 0.3, 74 + v * 0.7, 34]);
     }
 };
 GENS.pink_petals = (t, r) => {

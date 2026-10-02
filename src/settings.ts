@@ -9,6 +9,7 @@ export interface Settings {
   godRays: boolean;
   resolution: number; // 描画解像度の倍率
   particles: boolean;
+  farTerrain: boolean;
   bobbing: boolean;
   masterVol: number;
   musicVol: number;
@@ -20,7 +21,7 @@ export interface Settings {
 }
 
 const DEFAULTS: Settings = {
-  renderDistance: 10,
+  renderDistance: 12,
   fov: 72,
   sensitivity: 0.5,
   shadows: true,
@@ -29,6 +30,7 @@ const DEFAULTS: Settings = {
   godRays: true,
   resolution: 1,
   particles: true,
+  farTerrain: true,
   bobbing: true,
   masterVol: 0.8,
   musicVol: 0.5,

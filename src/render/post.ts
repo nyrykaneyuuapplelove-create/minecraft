@@ -166,8 +166,13 @@ export class PostFX {
   private levels = 6;
   msaa = 0;
   bloomEnabled = true;
+  private rtType: THREE.TextureDataType = THREE.HalfFloatType;
 
   constructor(private renderer: THREE.WebGLRenderer, w: number, h: number, msaa: number) {
+    const ext = renderer.extensions;
+    const hdr = ext.has("EXT_color_buffer_float") || ext.has("EXT_color_buffer_half_float");
+    this.rtType = hdr ? THREE.HalfFloatType : THREE.UnsignedByteType;
+    if (!hdr) msaa = 0;
     this.msaa = msaa;
     this.sceneRT = this.makeSceneRT(w, h);
     this.down = new Pass(DOWN_FS, {
@@ -184,7 +189,7 @@ export class PostFX {
 
   private makeSceneRT(w: number, h: number) {
     return new THREE.WebGLRenderTarget(w, h, {
-      type: THREE.HalfFloatType,
+      type: this.rtType,
       format: THREE.RGBAFormat,
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
@@ -212,7 +217,7 @@ export class PostFX {
       mh = Math.max(2, Math.floor(mh / 2));
       this.mips.push(
         new THREE.WebGLRenderTarget(mw, mh, {
-          type: THREE.HalfFloatType,
+          type: this.rtType,
           format: THREE.RGBAFormat,
           minFilter: THREE.LinearFilter,
           magFilter: THREE.LinearFilter,
@@ -223,9 +228,34 @@ export class PostFX {
     }
   }
 
+  private validated = false;
+
+  /** フレームバッファが使えるか確認し、ダメならMSAA→HDRの順に縮退する */
+  private validate() {
+    this.validated = true;
+    const r = this.renderer;
+    const gl = r.getContext() as WebGL2RenderingContext;
+    const ok = () => {
+      r.setRenderTarget(this.sceneRT);
+      return gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+    };
+    if (ok()) return;
+    console.warn("[hakoniwa] framebuffer incomplete: MSAA を無効にします");
+    this.setMsaa(0);
+    if (ok()) return;
+    console.warn("[hakoniwa] framebuffer incomplete: 8bit に切り替えます");
+    this.rtType = THREE.UnsignedByteType;
+    const { width, height } = this.sceneRT;
+    this.sceneRT.dispose();
+    this.sceneRT = this.makeSceneRT(width, height);
+    for (const m of this.mips) m.dispose();
+    this.setSize(width, height);
+  }
+
   /** シーン描画の前に呼ぶ：ターゲットをクリアして設定する */
   begin() {
     const r = this.renderer;
+    if (!this.validated) this.validate();
     r.setRenderTarget(this.sceneRT);
     r.setClearColor(0x000000, 0);
     r.clear(true, true, false);

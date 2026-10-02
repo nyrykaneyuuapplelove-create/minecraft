@@ -76,7 +76,11 @@ vec3 aurora(vec3 d) {
 void main() {
   vec3 d = normalize(vDir);
   if (uUnderwater > 0.5) {
-    gl_FragColor = vec4(uWaterFog, 0.0);
+    // 水面から差し込む光の筋
+    float rr = texture(uCloudTex, d.xz / (abs(d.y) * 0.7 + 0.9) * 0.55 + vec2(uTime * 0.012, uTime * 0.008)).r;
+    float rr2 = texture(uCloudTex, d.xz / (abs(d.y) * 0.7 + 0.9) * 1.3 - vec2(uTime * 0.02, 0.0)).r;
+    float shaft = smoothstep(0.5, 0.78, rr * 0.65 + rr2 * 0.35) * smoothstep(-0.1, 0.6, d.y);
+    gl_FragColor = vec4(uWaterFog * (0.75 + 1.5 * shaft), 0.0);
     return;
   }
   vec3 col = skyColor(d);

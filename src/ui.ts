@@ -32,6 +32,7 @@ const SLIDERS: (SliderDef | ToggleDef | string)[] = [
   { key: "bloom", label: "ブルーム（光のにじみ）" },
   { key: "godRays", label: "光芒（ゴッドレイ）" },
   { key: "particles", label: "パーティクル" },
+  { key: "farTerrain", label: "遠景（霞の向こうの山並み）" },
   { key: "bobbing", label: "視点の揺れ" },
   { key: "showFps", label: "FPS表示" },
   "操作",
@@ -290,7 +291,7 @@ export class UI {
         <button class="btn" data-a="settings">設定</button>
         <button class="btn" data-a="controls">操作方法</button>
       </div>
-      <div class="foot">マウスとキーボードで遊ぶブラウザゲームです。 / ヘッドホン推奨</div>`;
+      <div class="foot">${matchMedia("(pointer: coarse)").matches ? "このゲームはキーボードとマウスで遊びます（PC推奨）" : "マウスとキーボードで遊ぶブラウザゲームです。 / ヘッドホン推奨"}</div>`;
     this.continueBtn = this.title.querySelector('[data-a="continue"]') as HTMLButtonElement;
     this.title.addEventListener("click", (e) => {
       const a = (e.target as HTMLElement).closest("button")?.dataset.a;
@@ -347,6 +348,7 @@ export class UI {
         <button class="btn primary" data-a="resume">ゲームに戻る</button>
         <button class="btn" data-a="settings">設定</button>
         <button class="btn" data-a="controls">操作方法</button>
+        <button class="btn" data-a="fullscreen">フルスクリーン切替</button>
         <button class="btn" data-a="shot">スクリーンショット</button>
         <button class="btn" data-a="quit">保存してタイトルへ</button>
       </div></div>`;
@@ -356,6 +358,10 @@ export class UI {
       else if (a === "settings") this.openSettings();
       else if (a === "controls") this.controlsEl.classList.remove("hidden");
       else if (a === "shot") this.onScreenshot?.();
+      else if (a === "fullscreen") {
+        if (document.fullscreenElement) void document.exitFullscreen();
+        else void document.documentElement.requestFullscreen?.();
+      } else if (e.target === this.pauseEl) this.onResume?.();
       else if (a === "quit") this.onQuit?.();
     });
   }
